@@ -1,0 +1,728 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TheLow 報酬統計閲覧ツール</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --panel-bg: #2d2d2d;
+            --accent-color: #4da6ff;
+            --hover-color: #3a3a3a;
+            --border-color: #444;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            color: var(--accent-color);
+            margin-top: 0;
+        }
+
+        /* File Upload Area */
+        #drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            background-color: var(--panel-bg);
+            margin-bottom: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+            #drop-zone.dragover {
+                border-color: var(--accent-color);
+                background-color: var(--hover-color);
+            }
+
+            #drop-zone p {
+                margin: 0;
+                font-size: 1em;
+            }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            background: #444;
+            color: #fff;
+            border: 1px solid #666;
+            font-size: 1em;
+            min-width: 250px;
+        }
+
+        /* Stats Panel */
+        .stats-summary {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 200px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--panel-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 800px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #333;
+            font-weight: 600;
+            color: var(--accent-color);
+            cursor: pointer;
+            user-select: none;
+        }
+
+            th:hover {
+                background-color: #444;
+            }
+
+        tr:hover {
+            background-color: var(--hover-color);
+        }
+
+        .clickable-cell {
+            cursor: pointer;
+            color: #8ecfff;
+            text-decoration: underline dotted;
+            transition: color 0.2s;
+        }
+
+            .clickable-cell:hover {
+                color: #fff;
+                background-color: #444;
+            }
+
+        /* Bars */
+        .rarity-bar-bg {
+            background: #444;
+            height: 6px;
+            width: 80px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .rarity-bar-fill {
+            background: var(--accent-color);
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--modal-overlay);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+            .modal.show {
+                display: flex;
+                opacity: 1;
+                align-items: center;
+                justify-content: center;
+            }
+
+        .modal-content {
+            background-color: var(--panel-bg);
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+            .close-btn:hover {
+                color: #fff;
+            }
+
+        /* Modal Internal Chart */
+        .chart-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .chart-label {
+            width: 60px;
+            text-align: right;
+            margin-right: 10px;
+        }
+
+        .chart-bar-container {
+            flex-grow: 1;
+            background: #444;
+            height: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .chart-bar {
+            height: 100%;
+            background: var(--accent-color);
+        }
+
+        .chart-value {
+            width: 50px;
+            text-align: right;
+            margin-left: 10px;
+        }
+
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+
+        .error {
+            color: #ff6b6b;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .success {
+            color: #4da6ff;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .mc-color-reset {
+            color: inherit;
+        }
+    </style>
+</head>
+<body>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Thelow 報酬統計閲覧ツール</h1>
+        <div style="font-size: 0.8em; color: #888;">
+            Auto-load: <span id="autoload-status">Checking...</span>
+        </div>
+    </div>
+
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <p>ここに <strong>chest_logs.json</strong> と <strong>chest_groups.json</strong> をドラッグ＆ドロップ</p>
+        <p style="font-size: 0.8em; color: #888; margin-top: 5px;">またはクリックしてファイルを選択</p>
+        <p style="font-size: 0.7em; color: #666; margin-top: 5px;">※同じフォルダにあれば自動で読み込みを試みます</p>
+        <input type="file" id="file-input" multiple accept=".json" style="display:none">
+        <div id="msg-area"></div>
+    </div>
+
+    <div id="dashboard" class="hidden">
+        <div class="controls">
+            <div>
+                <label for="group-selector" style="display:block; margin-bottom:5px; font-size:0.9em; color:#aaa;">報酬グループ (Loot Table):</label>
+                <select id="group-selector"></select>
+            </div>
+        </div>
+
+        <div class="stats-summary">
+            <div class="stat-card">
+                <div class="stat-value" id="total-chests">0</div>
+                <div class="stat-label">開封チェスト総数 (Samples)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-slots">0</div>
+                <div class="stat-label">出現スロット総数 (Total Slots)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avg-slots">0</div>
+                <div class="stat-label">平均スロット数/箱 (Slots per Chest)</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="loot-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">アイテム名 (Item Name)</th>
+                        <th onclick="sortTable(1)">出現回数 (Freq)</th>
+                        <th onclick="sortTable(2)">スロット占有率 (Prob) ▼</th>
+                        <th onclick="sortTable(3)">個数内訳 [Min~Max / 平均] (Stack)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="stats-modal" class="modal" onclick="if(event.target === this) closeModal()">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title">アイテム統計</h2>
+            <h3 id="modal-subtitle" style="font-size: 1em; color: #aaa; margin-bottom: 20px;"></h3>
+
+            <div id="modal-body">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rawLogs = null;
+        let rawGroups = null;
+        let processedData = {};
+        let currentGroup = null;
+
+        // Minecraft Color Code Remover
+        function cleanMcText(text) {
+            return text.replace(/§[0-9a-fk-or]/g, '');
+        }
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            attemptAutoLoad();
+        });
+
+        // Try to fetch files from the same directory
+        async function attemptAutoLoad() {
+            const statusEl = document.getElementById('autoload-status');
+            const msgArea = document.getElementById('msg-area');
+
+            // ★キャッシュ対策用のタイムスタンプを作成
+            const cacheBuster = '?t=' + new Date().getTime();
+
+            try {
+                // Fetch in parallel
+                const [logsReq, groupsReq] = await Promise.allSettled([
+                    // ★ファイル名の後ろに cacheBuster を追加
+                    fetch('./chest_logs.json' + cacheBuster),
+                    fetch('./chest_groups.json' + cacheBuster)
+                ]);
+
+                if (logsReq.status === 'fulfilled' && logsReq.value.ok &&
+                    groupsReq.status === 'fulfilled' && groupsReq.value.ok) {
+
+                    rawLogs = await logsReq.value.json();
+                    rawGroups = await groupsReq.value.json();
+
+                    statusEl.textContent = "OK";
+                    statusEl.style.color = "#4da6ff";
+                    msgArea.className = "success";
+                    msgArea.textContent = "最新データを読み込みました。"; // メッセージも少し変更
+
+                    initializeData();
+                } else {
+                    throw new Error("Files not found or blocked");
+                }
+            } catch (e) {
+                statusEl.textContent = "Inactive (Manual)";
+                statusEl.style.color = "#666";
+                // Silent fail for auto-load (common on local file system)
+                console.log("Auto-load skipped:", e.message);
+            }
+        }
+
+        // --- Drag & Drop Handling ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const msgArea = document.getElementById('msg-area');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+        fileInput.addEventListener('change', handleFiles, false);
+
+        function handleDrop(e) {
+            const files = e.dataTransfer.files;
+            handleFiles({ target: { files: files } });
+        }
+
+        function handleFiles(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+
+            msgArea.textContent = '読み込み中...';
+            msgArea.className = '';
+
+            const readFile = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const json = JSON.parse(event.target.result);
+                            resolve({ name: file.name, data: json });
+                        } catch (err) {
+                            reject(`JSON Parse Error: ${file.name}`);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            };
+
+            const promises = Array.from(files).map(readFile);
+
+            Promise.all(promises).then(results => {
+                results.forEach(res => {
+                    // Simple heuristic to detect which file is which
+                    if (res.name.includes("logs") || (res.data && Object.keys(res.data)[0] && Array.isArray(res.data[Object.keys(res.data)[0]]))) {
+                        rawLogs = res.data;
+                    } else if (res.name.includes("groups") || (res.data && typeof Object.values(res.data)[0] === 'string')) {
+                        rawGroups = res.data;
+                    }
+                });
+
+                if (rawLogs && rawGroups) {
+                    initializeData();
+                    msgArea.className = "success";
+                    msgArea.textContent = "データを読み込みました！";
+                } else {
+                    msgArea.className = "error";
+                    msgArea.textContent = "エラー: chest_logs.json と chest_groups.json の両方が必要です。";
+                }
+            }).catch(err => {
+                msgArea.className = "error";
+                msgArea.textContent = err;
+            });
+        }
+
+        function initializeData() {
+            processData();
+            document.getElementById('dashboard').classList.remove('hidden');
+            // Hide drop zone to clean up UI, or keep it smaller? Let's hide it.
+            document.getElementById('drop-zone').classList.add('hidden');
+        }
+
+        // --- Data Processing ---
+        function processData() {
+            processedData = {};
+
+            for (const [coord, events] of Object.entries(rawLogs)) {
+                // Get group name or default
+                const groupName = (rawGroups && rawGroups[coord]) ? rawGroups[coord] : "未分類グループ (Unknown)";
+
+                if (!processedData[groupName]) {
+                    processedData[groupName] = {
+                        totalChests: 0,
+                        totalSlots: 0,
+                        items: {}
+                    };
+                }
+
+                const groupStats = processedData[groupName];
+
+                events.forEach(event => {
+                    groupStats.totalChests++;
+
+                    if (event.items && Array.isArray(event.items)) {
+                        groupStats.totalSlots += event.items.length;
+
+                        event.items.forEach(item => {
+                            const rawName = item.name;
+                            const count = parseInt(item.count) || 1;
+
+                            if (!groupStats.items[rawName]) {
+                                groupStats.items[rawName] = {
+                                    rawName: rawName,
+                                    cleanName: cleanMcText(rawName),
+                                    frequency: 0,
+                                    totalStack: 0,
+                                    minStack: count,
+                                    maxStack: count,
+                                    stackDist: {} // Map of quantity -> count
+                                };
+                            }
+
+                            const itemStat = groupStats.items[rawName];
+                            itemStat.frequency++;
+                            itemStat.totalStack += count;
+
+                            // Update min/max
+                            if (count < itemStat.minStack) itemStat.minStack = count;
+                            if (count > itemStat.maxStack) itemStat.maxStack = count;
+
+                            // Update distribution
+                            if (!itemStat.stackDist[count]) itemStat.stackDist[count] = 0;
+                            itemStat.stackDist[count]++;
+                        });
+                    }
+                });
+            }
+
+            initDropdown();
+        }
+
+        // --- UI Logic ---
+        function initDropdown() {
+            const selector = document.getElementById('group-selector');
+            selector.innerHTML = '';
+
+            const sortedGroups = Object.keys(processedData).sort();
+
+            sortedGroups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group;
+                option.textContent = group;
+                selector.appendChild(option);
+            });
+
+            selector.addEventListener('change', (e) => renderGroupStats(e.target.value));
+
+            if (sortedGroups.length > 0) {
+                renderGroupStats(sortedGroups[0]);
+            }
+        }
+
+        function renderGroupStats(groupName) {
+            currentGroup = groupName;
+            const data = processedData[groupName];
+            if (!data) return;
+
+            document.getElementById('total-chests').textContent = data.totalChests;
+            document.getElementById('total-slots').textContent = data.totalSlots;
+            const avg = data.totalChests > 0 ? (data.totalSlots / data.totalChests).toFixed(2) : 0;
+            document.getElementById('avg-slots').textContent = avg;
+
+            const tbody = document.querySelector('#loot-table tbody');
+            tbody.innerHTML = '';
+
+            const itemsArr = Object.values(data.items);
+            // Default sort: Prob Desc
+            itemsArr.sort((a, b) => b.frequency - a.frequency);
+
+            itemsArr.forEach(item => {
+                const prob = (data.totalSlots > 0) ? (item.frequency / data.totalSlots) * 100 : 0;
+                const avgStack = (item.totalStack / item.frequency);
+
+                const tr = document.createElement('tr');
+
+                // Name
+                const nameTd = document.createElement('td');
+                nameTd.innerHTML = `<span style="font-weight:bold;">${item.cleanName}</span>`;
+
+                // Frequency
+                const freqTd = document.createElement('td');
+                freqTd.textContent = item.frequency;
+
+                // Probability
+                const probTd = document.createElement('td');
+                probTd.innerHTML = `
+                        <div style="display:flex; align-items:center;">
+                            <div class="rarity-bar-bg">
+                                <div class="rarity-bar-fill" style="width: ${Math.min(prob, 100)}%"></div>
+                            </div>
+                            <strong>${prob.toFixed(4)}%</strong>
+                        </div>
+                    `;
+
+                // Stack Stats (Clickable)
+                const stackTd = document.createElement('td');
+                stackTd.className = "clickable-cell";
+                stackTd.title = "クリックして詳細を見る";
+                stackTd.onclick = () => openStatsModal(item);
+                // Format: [Min ~ Max / 平均: Avg]
+                stackTd.textContent = `[${item.minStack} ~ ${item.maxStack} / 平均: ${avgStack.toFixed(2)}]`;
+
+                tr.appendChild(nameTd);
+                tr.appendChild(freqTd);
+                tr.appendChild(probTd);
+                tr.appendChild(stackTd);
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- Sorting ---
+        let currentSort = { column: 2, dir: 'desc' };
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById("loot-table");
+            const tbody = table.querySelector("tbody");
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+
+            if (currentSort.column === columnIndex) {
+                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = columnIndex;
+                currentSort.dir = 'desc';
+                if (columnIndex === 0) currentSort.dir = 'asc';
+            }
+
+            // Update Header Arrow (Simple visual cue)
+            const headers = table.querySelectorAll("th");
+            headers.forEach(th => th.innerText = th.innerText.replace(' ▼', '').replace(' ▲', ''));
+            headers[columnIndex].innerText += (currentSort.dir === 'asc' ? ' ▲' : ' ▼');
+
+            rows.sort((rowA, rowB) => {
+                // Extract text properly
+                let valA = rowA.children[columnIndex].textContent.trim();
+                let valB = rowB.children[columnIndex].textContent.trim();
+
+                // Clean up for numeric sort
+                if (columnIndex === 2) { // Prob
+                    valA = parseFloat(valA.replace('%', ''));
+                    valB = parseFloat(valB.replace('%', ''));
+                } else if (columnIndex === 1) { // Freq
+                    valA = parseFloat(valA);
+                    valB = parseFloat(valB);
+                } else if (columnIndex === 3) { // Stack (sort by avg, which is the last number usually)
+                    // Extract Average from string "[1 ~ 5 / 平均: 2.5]"
+                    const extractAvg = (s) => {
+                        const match = s.match(/平均:\s*([\d\.]+)/);
+                        return match ? parseFloat(match[1]) : 0;
+                    };
+                    valA = extractAvg(valA);
+                    valB = extractAvg(valB);
+                }
+
+                if (!isNaN(valA) && !isNaN(valB)) {
+                    return currentSort.dir === 'asc' ? valA - valB : valB - valA;
+                }
+                return currentSort.dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            });
+
+            tbody.innerHTML = "";
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // --- Modal Logic ---
+        function openStatsModal(item) {
+            const modal = document.getElementById('stats-modal');
+            const title = document.getElementById('modal-title');
+            const subtitle = document.getElementById('modal-subtitle');
+            const body = document.getElementById('modal-body');
+
+            title.textContent = item.cleanName;
+            subtitle.textContent = `グループ: ${currentGroup} / 総排出数: ${item.frequency}`;
+            body.innerHTML = '';
+
+            // Generate Histogram / Table
+            // Find max freq for bar scaling
+            let maxFreq = 0;
+            const stacks = Object.keys(item.stackDist).map(Number).sort((a, b) => a - b);
+            stacks.forEach(s => {
+                if (item.stackDist[s] > maxFreq) maxFreq = item.stackDist[s];
+            });
+
+            stacks.forEach(stackSize => {
+                const count = item.stackDist[stackSize];
+                const percentage = ((count / item.frequency) * 100).toFixed(1);
+                const barWidth = (count / maxFreq) * 100;
+
+                const row = document.createElement('div');
+                row.className = 'chart-row';
+                row.innerHTML = `
+                        <div class="chart-label"><strong>${stackSize}</strong> 個</div>
+                        <div class="chart-bar-container">
+                            <div class="chart-bar" style="width: ${barWidth}%"></div>
+                        </div>
+                        <div class="chart-value">${count}回 <span style="color:#888; font-size:0.8em">(${percentage}%)</span></div>
+                    `;
+                body.appendChild(row);
+            });
+
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('stats-modal').classList.remove('show');
+        }
+
+        // Close modal on Esc key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape") closeModal();
+        });
+
+    </script>
+</body>
+</html>
