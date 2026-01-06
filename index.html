@@ -550,6 +550,14 @@
 
             const sortedGroups = Object.keys(processedData).sort();
 
+            // ★ URLパラメータ取得
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetGroup = urlParams.get('data');
+
+            // 以前のエラー表示があれば消しておく
+            const oldError = document.getElementById('param-error-banner');
+            if (oldError) oldError.remove();
+
             sortedGroups.forEach(group => {
                 const option = document.createElement('option');
                 option.value = group;
@@ -560,8 +568,45 @@
             selector.addEventListener('change', (e) => renderGroupStats(e.target.value));
 
             if (sortedGroups.length > 0) {
-                renderGroupStats(sortedGroups[0]);
+                let initialGroup = sortedGroups[0]; // デフォルトは先頭
+
+                if (targetGroup) {
+                    if (processedData[targetGroup]) {
+                        // パラメータが有効ならそれを選択
+                        initialGroup = targetGroup;
+                    } else {
+                        // パラメータが無効ならエラーを表示してデフォルト維持
+                        showParamError(`グループ名 ["${targetGroup}"] はデータに存在しません。`);
+                    }
+                }
+
+                selector.value = initialGroup;
+                renderGroupStats(initialGroup);
             }
+        }
+
+        // ★ エラーメッセージ表示用の新しい関数
+        function showParamError(msg) {
+            const dashboard = document.getElementById('dashboard');
+
+            const errorDiv = document.createElement('div');
+            errorDiv.id = 'param-error-banner';
+            // スタイル設定（赤背景・赤文字・枠線）
+            errorDiv.style.cssText = `
+                background-color: rgba(255, 107, 107, 0.15);
+                color: #ff6b6b;
+                border: 1px solid #ff6b6b;
+                padding: 15px;
+                margin-bottom: 20px;
+                border-radius: 8px;
+                text-align: center;
+                font-weight: bold;
+                animation: slideIn 0.3s ease-out;
+            `;
+            errorDiv.textContent = msg;
+
+            // ダッシュボードの一番上に挿入
+            dashboard.insertBefore(errorDiv, dashboard.firstChild);
         }
 
         function renderGroupStats(groupName) {
